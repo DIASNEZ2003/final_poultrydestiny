@@ -1,14 +1,15 @@
+// src/Dashboard/BatchControl.jsx
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '../firebase'; 
 import { ref, onValue, push, set, update, remove, get } from 'firebase/database';
 import { 
   Calendar, Users, ClipboardList, 
   Archive, Trash2, CheckCircle, PlusCircle, 
-  AlertTriangle, Check, Search, X, Filter, Edit2, Play
+  AlertTriangle, Check, Search, X, Filter, Edit2, Play, Loader2
 } from 'lucide-react';
 
 // ==========================================
-// 1. FORECASTING & MATH ENGINE
+// 1. FORECASTING & MATH ENGINE (Untouched)
 // ==========================================
 const getFeedLogic = (day) => {
   if (day <= 1) return { grams: 35.0, type: "Booster" };
@@ -93,23 +94,23 @@ const generateWeightForecast = (startWeight, pop, feedForecast) => {
 };
 
 // ==========================================
-// 2. MODALS
+// 2. COMPACT MODALS
 // ==========================================
 const SuccessModal = ({ message, onClose }) => {
   if (!message) return null;
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[140] animate-fade-in">
-      <div className="bg-white rounded-xl shadow-2xl p-6 w-80 text-center border border-gray-100">
-        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-50 mb-4 border border-green-100">
-          <Check className="h-6 w-6 text-green-600" />
+    <div className="fixed inset-0 bg-white/60 backdrop-blur-md flex items-center justify-center z-[140] animate-fade-in">
+      <div className="bg-white rounded-xl shadow-2xl p-5 w-72 text-center border border-gray-200">
+        <div className="mx-auto flex items-center justify-center h-10 w-10 rounded-full bg-green-50 mb-3 border border-green-100">
+          <Check className="h-5 w-5 text-green-600" />
         </div>
-        <h3 className="text-lg font-bold text-gray-800 mb-1">Success</h3>
-        <p className="text-xs text-gray-500 mb-6">{message}</p>
+        <h3 className="text-sm font-black text-gray-800 mb-1">Success</h3>
+        <p className="text-xs text-gray-500 mb-5 font-medium">{message}</p>
         <button 
           onClick={onClose}
-          className="w-full bg-[#3B0A0A] text-white text-xs font-semibold rounded-lg px-4 py-2.5 hover:bg-red-900 transition-all active:scale-95"
+          className="w-full bg-red-900 text-white text-xs font-bold rounded-lg px-3 py-2 hover:bg-red-800 transition-all active:scale-95"
         >
-          Continue
+          CONTINUE
         </button>
       </div>
     </div>
@@ -135,38 +136,36 @@ const ConfirmModal = ({ isOpen, type, onConfirm, onCancel }) => {
     config = {
       title: "Set as Active",
       message: "This will set this batch as the active cycle. The current active batch will be deactivated.",
-      btnColor: "bg-[#3B0A0A] hover:bg-red-950", icon: <Play className="h-5 w-5 text-red-900" />,
+      btnColor: "bg-red-900 hover:bg-red-800", icon: <Play className="h-5 w-5 text-red-900" />,
       iconBg: "bg-red-50", btnText: "Activate"
     };
   } else if (type === 'complete') {
     config = {
       title: "Archive Batch",
-      message: "This moves the batch to history and automatically activates the next waiting batch.",
+      message: "Moves the batch to history and automatically activates the next waiting batch.",
       btnColor: "bg-gray-800 hover:bg-gray-900", icon: <Archive className="h-5 w-5 text-gray-700" />,
       iconBg: "bg-gray-100", btnText: "Archive"
     };
   } else if (type === 'delete') {
     config = {
       title: "Delete Record",
-      message: "This is permanent. All related sales and expenses will be deleted.",
+      message: "This is permanent. All related records will be deleted.",
       btnColor: "bg-red-600 hover:bg-red-700", icon: <Trash2 className="h-5 w-5 text-red-600" />,
       iconBg: "bg-red-50", btnText: "Delete"
     };
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
-      <div className="bg-white rounded-xl shadow-xl p-5 w-full max-w-xs border border-gray-100">
-        <div className="flex items-center gap-3 mb-3">
-          <div className={`flex items-center justify-center h-10 w-10 rounded-full ${config.iconBg} border border-black/5`}>
-            {config.icon}
-          </div>
-          <h3 className="text-sm font-bold text-gray-800">{config.title}</h3>
+    <div className="fixed inset-0 bg-white/60 backdrop-blur-md flex items-center justify-center z-[150] p-4">
+      <div className="bg-white rounded-xl shadow-2xl p-5 w-full max-w-xs border border-gray-200 text-center ring-1 ring-black/5">
+        <div className={`mx-auto flex items-center justify-center h-10 w-10 rounded-full ${config.iconBg} mb-3 border`}>
+          {config.icon}
         </div>
+        <h3 className="text-sm font-black text-gray-800 mb-1">{config.title}</h3>
         <p className="text-[11px] text-gray-500 mb-5 leading-relaxed">{config.message}</p>
         <div className="flex gap-2">
-          <button onClick={onCancel} className="flex-1 bg-gray-50 border border-gray-200 text-gray-600 font-medium py-2 rounded-lg text-xs hover:bg-gray-100 transition-colors">Cancel</button>
-          <button onClick={onConfirm} className={`flex-1 text-white font-medium py-2 rounded-lg text-xs transition-colors shadow-sm ${config.btnColor}`}>{config.btnText}</button>
+          <button onClick={onCancel} className="flex-1 bg-gray-100 border border-transparent text-gray-700 font-bold py-2 rounded-lg text-[10px] uppercase hover:bg-gray-200 transition-colors">Cancel</button>
+          <button onClick={onConfirm} className={`flex-1 text-white font-bold py-2 rounded-lg text-[10px] uppercase shadow-md transition-colors ${config.btnColor}`}>{config.btnText}</button>
         </div>
       </div>
     </div>
@@ -374,7 +373,7 @@ const BatchControl = () => {
   });
 
   return (
-    <div className="bg-gray-50 min-h-full font-sans text-gray-800 px-4 py-6 md:px-8 max-w-7xl mx-auto animate-fade-in">
+    <div className="bg-transparent h-full w-full font-sans text-gray-800 animate-fade-in flex flex-col text-sm">
       <SuccessModal message={successMessage} onClose={() => setSuccessMessage('')} />
       <ConfirmModal 
         isOpen={confirmModal.isOpen} 
@@ -383,27 +382,27 @@ const BatchControl = () => {
         onConfirm={performAction} 
       />
 
-      {/* --- SLEEK TOOLBAR --- */}
-      <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-3 rounded-xl border border-gray-200 shadow-sm mb-6 gap-4">
+      {/* --- SLEEK COMPACT TOOLBAR --- */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
         
         {/* Left: Search Bar */}
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+        <div className="relative flex-1 w-full sm:max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
           <input 
             type="text" 
             placeholder="Search batches..." 
             value={searchTerm} 
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:bg-white focus:ring-2 focus:ring-[#3B0A0A]/20 focus:border-[#3B0A0A]/40 transition-all placeholder-gray-400"
+            className="w-full pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg shadow-sm text-xs outline-none focus:border-red-900 focus:ring-1 focus:ring-red-900 transition-all placeholder-gray-400"
           />
         </div>
         
         {/* Right: Filters & Action */}
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 flex-1 sm:flex-none">
-            <Filter size={12} className="text-gray-500" />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-1.5 bg-white border border-gray-200 shadow-sm rounded-lg px-2.5 py-1.5 flex-1 sm:flex-none">
+            <Filter size={12} className="text-gray-400" />
             <select 
-              className="bg-transparent text-xs text-gray-600 outline-none cursor-pointer w-full" 
+              className="bg-transparent text-[11px] font-bold text-gray-600 outline-none cursor-pointer w-full" 
               value={statusFilter} 
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -416,25 +415,25 @@ const BatchControl = () => {
           
           <button 
             onClick={() => { setIsEditing(false); setFormData({batchName: '', dateCreated: '', expectedCompleteDate: '', startingPopulation: '', status: 'active'}); setIsAddModalOpen(true); }} 
-            className="bg-[#3B0A0A] text-white px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-red-950 transition-colors flex items-center gap-1.5 shadow-sm whitespace-nowrap"
+            className="bg-red-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-800 transition-colors flex items-center gap-1.5 shadow active:scale-95 whitespace-nowrap"
           >
             <PlusCircle size={14} /> New Batch
           </button>
         </div>
       </div>
 
-      {/* --- PROFESSIONAL DATA CARDS --- */}
+      {/* --- COMPACT DATA CARDS --- */}
       {loading ? (
-        <div className="flex justify-center items-center py-20">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#3B0A0A]"></div>
+        <div className="flex justify-center items-center py-20 flex-1">
+          <Loader2 className="animate-spin text-red-900" size={24} />
         </div>
       ) : filteredBatches.length === 0 ? (
-        <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 flex flex-col items-center justify-center text-gray-400">
-          <Archive size={32} className="mb-3 text-gray-300" />
-          <p className="text-xs font-medium">No matching records found.</p>
+        <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 flex flex-col items-center justify-center text-gray-400 flex-1">
+          <Archive size={28} className="mb-2 text-gray-300" />
+          <p className="text-xs font-bold uppercase tracking-widest">No matching records</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto pb-4">
           {filteredBatches.map((batch) => {
             const isActive = batch.status === 'active';
             const isCompleted = batch.status === 'completed';
@@ -442,22 +441,22 @@ const BatchControl = () => {
             return (
               <div 
                 key={batch.id} 
-                className={`relative bg-white rounded-xl p-4 flex flex-col transition-all duration-200 border 
+                className={`relative bg-white rounded-xl p-4 flex flex-col transition-all duration-200 border group
                   ${isActive 
-                    ? 'border-[#3B0A0A]/20 shadow-md shadow-[#3B0A0A]/5 hover:shadow-lg hover:shadow-[#3B0A0A]/10' 
+                    ? 'border-red-900/20 shadow-md shadow-red-900/5' 
                     : isCompleted 
-                    ? 'border-gray-200 shadow-sm opacity-75 hover:opacity-100' 
-                    : 'border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300'
+                    ? 'border-gray-200 shadow-sm opacity-70 hover:opacity-100' 
+                    : 'border-gray-200 shadow-sm'
                   }
                 `}
               >
                 {/* Active Accent Line */}
-                {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#3B0A0A] rounded-l-xl"></div>}
+                {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-600 rounded-l-xl"></div>}
 
                 {/* Header: Name & Badge */}
-                <div className="flex justify-between items-start mb-4 pl-1">
-                  <div>
-                    <h3 className={`text-sm font-bold tracking-tight line-clamp-1 ${isActive ? 'text-gray-900' : 'text-gray-700'}`} title={batch.batchName}>
+                <div className="flex justify-between items-start mb-3 pl-1">
+                  <div className="overflow-hidden mr-2">
+                    <h3 className={`text-sm font-bold tracking-tight truncate ${isActive ? 'text-gray-900' : 'text-gray-700'}`} title={batch.batchName}>
                       {batch.batchName}
                     </h3>
                     <p className="text-[9px] text-gray-400 mt-0.5 font-mono">
@@ -465,37 +464,35 @@ const BatchControl = () => {
                     </p>
                   </div>
                   
-                  <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider border ${
-                    isActive ? 'bg-red-50 text-[#3B0A0A] border-red-100' : 
+                  <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider border whitespace-nowrap ${
+                    isActive ? 'bg-red-50 text-red-700 border-red-200' : 
                     isCompleted ? 'bg-gray-100 text-gray-500 border-gray-200' :
-                    'bg-blue-50 text-blue-600 border-blue-100'
+                    'bg-gray-50 text-gray-600 border-gray-200'
                   }`}>
                     {isCompleted ? 'Archived' : batch.status}
                   </span>
                 </div>
 
                 {/* Minimalist Data Rows */}
-                <div className="space-y-2.5 mb-5 flex-1 pl-1">
-                  {/* Timeline Row */}
+                <div className="space-y-2 mb-4 flex-1 pl-1">
                   <div className="flex items-center text-xs">
-                    <Calendar size={13} className="text-gray-400 mr-2 shrink-0" />
-                    <span className="text-gray-500 w-16 shrink-0">Dates:</span>
-                    <span className="text-gray-800 font-medium truncate">
+                    <Calendar size={12} className="text-gray-400 mr-2 shrink-0" />
+                    <span className="text-gray-500 w-12 shrink-0 text-[10px] font-bold uppercase">Dates</span>
+                    <span className="text-gray-800 font-medium truncate text-[11px]">
                       {new Date(batch.dateCreated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {batch.expectedCompleteDate ? new Date(batch.expectedCompleteDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'TBD'}
                     </span>
                   </div>
 
-                  {/* Population Row */}
                   <div className="flex items-center text-xs">
-                    <img src="./chicken.png" alt="Birds" className="w-3.5 h-3.5 object-contain mr-2 shrink-0 opacity-50 grayscale" />
-                    <span className="text-gray-500 w-16 shrink-0">Birds:</span>
-                    <span className="text-gray-800 font-medium">
+                    <img src="./chicken.png" alt="Birds" className="w-3 h-3 object-contain mr-2 shrink-0 opacity-50 grayscale" />
+                    <span className="text-gray-500 w-12 shrink-0 text-[10px] font-bold uppercase">Birds</span>
+                    <span className="text-gray-800 font-bold text-[11px]">
                       {batch.startingPopulation.toLocaleString()}
                     </span>
                   </div>
                 </div>
 
-                {/* Footer: Live Dot & Actions */}
+                {/* Footer: Live Dot & ALWAYS VISIBLE Actions */}
                 <div className="pt-3 border-t border-gray-100 flex items-center justify-between pl-1">
                   
                   {/* Left: Status Indicator */}
@@ -503,27 +500,27 @@ const BatchControl = () => {
                     {batch.status === 'inactive' && (
                       <button 
                         onClick={() => setConfirmModal({ isOpen: true, type: 'activate', targetId: batch.id })} 
-                        className="flex items-center gap-1 text-[9px] font-semibold text-gray-500 hover:text-[#3B0A0A] transition-colors"
+                        className="flex items-center gap-1 text-[9px] font-bold uppercase text-gray-500 hover:text-red-900 transition-colors"
                       >
                         <Play size={10} /> Set Active
                       </button>
                     )}
                     {isActive && (
-                      <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[#3B0A0A]">
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-red-600">
                         <span className="relative flex h-1.5 w-1.5">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#3B0A0A]"></span>
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-600"></span>
                         </span>
                         Live Now
                       </div>
                     )}
                   </div>
                   
-                  {/* Right: Icon-only Action Buttons */}
-                  <div className="flex items-center gap-1">
+                  {/* Right: Permanent Action Buttons */}
+                  <div className="flex items-center gap-1.5">
                     <button 
                       onClick={() => handleEditClick(batch)} 
-                      className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                      className="p-1.5 bg-gray-50 text-gray-600 border border-gray-200 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 rounded-md transition-colors"
                       title="Edit Batch"
                     >
                       <Edit2 size={13} />
@@ -532,7 +529,7 @@ const BatchControl = () => {
                     {isActive && (
                       <button 
                         onClick={() => setConfirmModal({ isOpen: true, type: 'complete', targetId: batch.id })} 
-                        className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                        className="p-1.5 bg-gray-50 text-gray-600 border border-gray-200 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 rounded-md transition-colors"
                         title="Finish Batch"
                       >
                         <CheckCircle size={13} />
@@ -541,13 +538,12 @@ const BatchControl = () => {
                     
                     <button 
                       onClick={() => setConfirmModal({ isOpen: true, type: 'delete', targetId: batch.id })} 
-                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                      className="p-1.5 bg-gray-50 text-gray-600 border border-gray-200 hover:text-red-600 hover:bg-red-50 hover:border-red-200 rounded-md transition-colors"
                       title="Delete Record"
                     >
                       <Trash2 size={13} />
                     </button>
                   </div>
-
                 </div>
               </div>
             );
@@ -557,14 +553,16 @@ const BatchControl = () => {
 
       {/* --- COMPACT ADD/EDIT MODAL --- */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[130] p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-gray-100 animate-fade-in">
-            <div className="bg-white border-b border-gray-100 p-4 flex justify-between items-center">
-              <div className="flex items-center gap-2 text-gray-800">
-                {isEditing ? <Edit2 size={16} className="text-[#3B0A0A]" /> : <PlusCircle size={16} className="text-[#3B0A0A]"/>}
-                <h2 className="font-bold text-sm">{isEditing ? "Edit Batch Record" : "New Production Batch"}</h2>
+        <div className="fixed inset-0 bg-white/60 backdrop-blur-md flex items-center justify-center z-[130] p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-gray-200 animate-fade-in ring-1 ring-black/5">
+            <div className="bg-red-900 p-3 flex justify-between items-center text-white">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-white/10 rounded-lg">
+                  {isEditing ? <Edit2 size={14} /> : <PlusCircle size={14} />}
+                </div>
+                <h2 className="font-bold text-xs">{isEditing ? "Edit Batch Record" : "New Production Batch"}</h2>
               </div>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-gray-800 transition-colors"><X size={18} /></button>
+              <button onClick={() => setIsAddModalOpen(false)} className="hover:bg-red-800 p-1 rounded transition-colors"><X size={16} /></button>
             </div>
             
             <form 
@@ -572,57 +570,57 @@ const BatchControl = () => {
                 e.preventDefault(); 
                 setConfirmModal({ isOpen: true, type: isEditing ? 'update' : 'create', targetId: null }); 
               }} 
-              className="p-5 space-y-4"
+              className="p-4 space-y-3"
             >
               <div>
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">Batch Name</label>
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">Batch Name</label>
                 <input 
                   type="text" required placeholder="E.g., Summer Flock 2026" value={formData.batchName} 
                   onChange={(e) => setFormData({...formData, batchName: e.target.value})} 
-                  className="w-full bg-white border border-gray-200 rounded-lg p-2 text-xs outline-none focus:border-[#3B0A0A] focus:ring-1 focus:ring-[#3B0A0A]/20 transition-all" 
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs outline-none focus:border-red-900 focus:ring-1 focus:ring-red-900 transition-all font-medium" 
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">Start Date</label>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">Start Date</label>
                   <input 
                     type="date" required value={formData.dateCreated} onChange={handleDateChange} 
-                    className="w-full bg-white border border-gray-200 rounded-lg p-2 text-xs outline-none focus:border-[#3B0A0A] focus:ring-1 focus:ring-[#3B0A0A]/20 text-gray-700" 
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs outline-none focus:border-red-900 focus:ring-1 focus:ring-red-900 font-medium" 
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">Harvest Date</label>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">Harvest Date</label>
                   <input 
                     type="date" required value={formData.expectedCompleteDate} 
                     onChange={(e) => setFormData({...formData, expectedCompleteDate: e.target.value})} 
-                    className="w-full bg-white border border-gray-200 rounded-lg p-2 text-xs outline-none focus:border-[#3B0A0A] focus:ring-1 focus:ring-[#3B0A0A]/20 text-gray-700" 
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs outline-none focus:border-red-900 focus:ring-1 focus:ring-red-900 font-medium" 
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">Total Birds</label>
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">Total Birds</label>
                 <input 
                   type="number" required placeholder="0" value={formData.startingPopulation} 
                   onChange={(e) => setFormData({...formData, startingPopulation: e.target.value})} 
-                  className="w-full bg-white border border-gray-200 rounded-lg p-2 text-xs outline-none focus:border-[#3B0A0A] focus:ring-1 focus:ring-[#3B0A0A]/20 font-medium text-gray-800" 
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs outline-none focus:border-red-900 focus:ring-1 focus:ring-red-900 font-bold" 
                 />
               </div>
 
-              <div className="flex gap-2 pt-3">
+              <div className="flex gap-2 pt-2">
                 <button 
                   type="button" 
                   onClick={() => setIsAddModalOpen(false)} 
-                  className="flex-1 bg-white border border-gray-200 text-gray-600 font-medium py-2 rounded-lg text-xs hover:bg-gray-50 transition-colors"
+                  className="flex-1 bg-gray-100 text-gray-600 font-bold py-2 rounded-lg text-xs uppercase hover:bg-gray-200 transition-colors"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
-                  className="flex-1 bg-[#3B0A0A] text-white font-medium py-2 rounded-lg text-xs hover:bg-red-950 transition-colors shadow-sm"
+                  className="flex-1 bg-red-900 text-white font-bold py-2 rounded-lg text-xs uppercase hover:bg-red-800 transition-colors shadow"
                 >
-                  {isEditing ? "Save Changes" : "Create Batch"}
+                  {isEditing ? "Save" : "Create"}
                 </button>
               </div>
             </form>
@@ -633,6 +631,7 @@ const BatchControl = () => {
       <style>{`
         @keyframes fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fade-in 0.2s ease-out forwards; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
       `}</style>
     </div>
   );
