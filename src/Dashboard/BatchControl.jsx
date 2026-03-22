@@ -1,5 +1,6 @@
 // src/Dashboard/BatchControl.jsx
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom'; // <-- Added createPortal
 import { auth, db } from '../firebase'; 
 import { ref, onValue, push, set, update, remove, get } from 'firebase/database';
 import { 
@@ -94,12 +95,12 @@ const generateWeightForecast = (startWeight, pop, feedForecast) => {
 };
 
 // ==========================================
-// 2. COMPACT MODALS
+// 2. COMPACT MODALS (Using Portals)
 // ==========================================
 const SuccessModal = ({ message, onClose }) => {
   if (!message) return null;
-  return (
-    <div className="fixed inset-0 bg-white/60 backdrop-blur-md flex items-center justify-center z-[140] animate-fade-in">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center animate-fade-in p-4">
       <div className="bg-white rounded-xl shadow-2xl p-5 w-72 text-center border border-gray-200">
         <div className="mx-auto flex items-center justify-center h-10 w-10 rounded-full bg-green-50 mb-3 border border-green-100">
           <Check className="h-5 w-5 text-green-600" />
@@ -113,7 +114,8 @@ const SuccessModal = ({ message, onClose }) => {
           CONTINUE
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -155,9 +157,9 @@ const ConfirmModal = ({ isOpen, type, onConfirm, onCancel }) => {
     };
   }
 
-  return (
-    <div className="fixed inset-0 bg-white/60 backdrop-blur-md flex items-center justify-center z-[150] p-4">
-      <div className="bg-white rounded-xl shadow-2xl p-5 w-full max-w-xs border border-gray-200 text-center ring-1 ring-black/5">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-2xl p-5 w-full max-w-xs border border-gray-200 text-center ring-1 ring-black/5 animate-fade-in">
         <div className={`mx-auto flex items-center justify-center h-10 w-10 rounded-full ${config.iconBg} mb-3 border`}>
           {config.icon}
         </div>
@@ -168,7 +170,8 @@ const ConfirmModal = ({ isOpen, type, onConfirm, onCancel }) => {
           <button onClick={onConfirm} className={`flex-1 text-white font-bold py-2 rounded-lg text-[10px] uppercase shadow-md transition-colors ${config.btnColor}`}>{config.btnText}</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -551,10 +554,10 @@ const BatchControl = () => {
         </div>
       )}
 
-      {/* --- COMPACT ADD/EDIT MODAL --- */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-white/60 backdrop-blur-md flex items-center justify-center z-[130] p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-gray-200 animate-fade-in ring-1 ring-black/5">
+      {/* --- COMPACT ADD/EDIT MODAL (Using Portal) --- */}
+      {isAddModalOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-gray-200 ring-1 ring-black/5">
             <div className="bg-red-900 p-3 flex justify-between items-center text-white">
               <div className="flex items-center gap-2">
                 <div className="p-1.5 bg-white/10 rounded-lg">
@@ -625,7 +628,8 @@ const BatchControl = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       
       <style>{`

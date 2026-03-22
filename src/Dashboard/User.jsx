@@ -1,5 +1,6 @@
 // src/Pages/User.jsx
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom'; // <-- Added createPortal
 import { auth } from '../firebase'; 
 import { getDatabase, ref, onValue, update, push, set, remove } from "firebase/database";
 import { supabase } from '../supabaseClient'; 
@@ -16,20 +17,21 @@ const formatTime = (timestamp) => {
   return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 };
 
-// --- COMPONENT: FULLSCREEN IMAGE VIEWER ---
+// --- COMPONENT: FULLSCREEN IMAGE VIEWER (Using Portal) ---
 const ImageViewerModal = ({ imageUrl, onClose }) => {
   if (!imageUrl) return null;
-  return (
-    <div className="fixed inset-0 z-[9999] bg-white/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
       <button onClick={onClose} className="absolute top-4 right-4 text-gray-600 hover:text-red-600 transition-colors bg-white/80 hover:bg-white p-1.5 rounded-full z-50 shadow-sm ring-1 ring-black/5">
         <X size={20} />
       </button>
       <img src={imageUrl} alt="Fullscreen View" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl bg-white ring-1 ring-black/5" onClick={(e) => e.stopPropagation()} />
-    </div>
+    </div>,
+    document.body
   );
 };
 
-// --- COMPONENT: IN-SYSTEM DOCUMENT VIEWER ---
+// --- COMPONENT: IN-SYSTEM DOCUMENT VIEWER (Using Portal) ---
 const DocumentViewerModal = ({ documentInfo, onClose }) => {
   if (!documentInfo) return null;
   const { url, type, name } = documentInfo;
@@ -49,8 +51,8 @@ const DocumentViewerModal = ({ documentInfo, onClose }) => {
     viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
   }
 
-  return (
-    <div className="fixed inset-0 z-[9999] bg-white/80 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-fade-in">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-fade-in">
       <div className="w-full max-w-4xl h-full flex flex-col bg-white rounded-xl shadow-2xl overflow-hidden relative ring-1 ring-black/5">
         <div className="bg-gray-100 p-3 flex justify-between items-center border-b border-gray-200">
           <div className="flex items-center gap-3">
@@ -92,7 +94,8 @@ const DocumentViewerModal = ({ documentInfo, onClose }) => {
           <iframe src={viewerUrl} className="w-full h-full border-none absolute inset-0 z-10 bg-transparent" title="Document Viewer" />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -145,11 +148,11 @@ const PasswordInput = ({ label, value, onChange, placeholder }) => {
   );
 };
 
-// --- COMPONENT: SUCCESS MODAL ---
+// --- COMPONENT: SUCCESS MODAL (Using Portal) ---
 const SuccessModal = ({ message, onClose }) => {
   if (!message) return null;
-  return (
-    <div className="fixed inset-0 bg-white/60 backdrop-blur-md flex items-center justify-center z-[140] animate-fade-in">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center animate-fade-in p-4">
       <div className="bg-white rounded-xl shadow-2xl p-5 w-72 text-center border border-gray-200 ring-1 ring-black/5">
         <div className="mx-auto flex items-center justify-center h-10 w-10 rounded-full bg-green-50 mb-3 border border-green-100">
           <Check className="h-5 w-5 text-green-600" />
@@ -158,19 +161,20 @@ const SuccessModal = ({ message, onClose }) => {
         <p className="text-xs text-gray-500 mb-5 font-medium">{message}</p>
         <button onClick={onClose} className="w-full bg-red-900 text-white text-xs font-bold rounded-lg px-3 py-2 hover:bg-red-800 transition-all active:scale-95">CONTINUE</button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
-// --- COMPONENT: CONFIRM MODAL ---
+// --- COMPONENT: CONFIRM MODAL (Using Portal) ---
 const ConfirmModal = ({ isOpen, type, onConfirm, onCancel }) => {
   if (!isOpen) return null;
   let config = { title: "Confirm Action", message: "Proceed with this action?", btnColor: "bg-red-600", icon: <AlertTriangle className="h-5 w-5 text-orange-500" />, iconBg: "bg-orange-50", btnText: "Confirm" };
   if (type === 'create') config = { title: "Register User", message: "Are you sure you want to create this account?", btnColor: "bg-green-600", icon: <UserPlus className="h-5 w-5 text-green-600" />, iconBg: "bg-green-50", btnText: "Create" };
   else if (type === 'delete') config = { title: "Delete User?", message: "Permanently remove this user? Cannot be undone.", btnColor: "bg-red-600 hover:bg-red-700", icon: <Trash2 className="h-5 w-5 text-red-600" />, iconBg: "bg-red-50", btnText: "Delete" };
 
-  return (
-    <div className="fixed inset-0 bg-white/60 backdrop-blur-md flex items-center justify-center z-[150] p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
       <div className="bg-white rounded-xl shadow-2xl p-5 w-full max-w-xs border border-gray-200 text-center ring-1 ring-black/5">
         <div className={`mx-auto flex items-center justify-center h-10 w-10 rounded-full ${config.iconBg} mb-3 border`}>{config.icon}</div>
         <h3 className="text-sm font-black text-gray-800 mb-1">{config.title}</h3>
@@ -180,11 +184,12 @@ const ConfirmModal = ({ isOpen, type, onConfirm, onCancel }) => {
           <button onClick={onConfirm} className={`flex-1 text-white font-bold py-2 rounded-lg text-[10px] uppercase shadow-md transition-colors ${config.btnColor}`}>{config.btnText}</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
-// --- COMPONENT: MESSENGER MODAL ---
+// --- COMPONENT: MESSENGER MODAL (Using Portal) ---
 const MessengerModal = ({ isOpen, onClose, targetUser, onViewImage, onViewDocument }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -273,8 +278,8 @@ const MessengerModal = ({ isOpen, onClose, targetUser, onViewImage, onViewDocume
 
   if (!isOpen || !targetUser) return null; 
 
-  return (
-    <div className="fixed inset-0 bg-white/60 backdrop-blur-md flex items-center justify-center z-[140] p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white w-full max-w-md h-[550px] rounded-xl shadow-2xl flex flex-col overflow-hidden relative border border-gray-200 ring-1 ring-black/5 animate-fade-in">
         
         {msgToDelete && (
@@ -397,7 +402,8 @@ const MessengerModal = ({ isOpen, onClose, targetUser, onViewImage, onViewDocume
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -583,8 +589,9 @@ const User = () => {
         </div>
       </div>
 
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-white/60 backdrop-blur-md flex items-center justify-center z-[130] p-4">
+      {/* --- ADD USER MODAL (Using Portal) --- */}
+      {isAddModalOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-gray-200 ring-1 ring-black/5 animate-fade-in">
             <div className="bg-red-900 p-3 flex justify-between items-center text-white">
               <h2 className="font-bold text-sm flex items-center gap-2"><UserPlus size={16}/> Register Account</h2>
@@ -612,11 +619,13 @@ const User = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {isEditModalOpen && (
-        <div className="fixed inset-0 bg-white/60 backdrop-blur-md flex items-center justify-center z-[130] p-4">
+      {/* --- EDIT USER MODAL (Using Portal) --- */}
+      {isEditModalOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-gray-200 ring-1 ring-black/5 animate-fade-in">
             <div className="bg-red-900 p-3 flex justify-between items-center text-white">
               <h2 className="font-bold text-sm flex items-center gap-2"><Edit2 size={16}/> Edit Profile</h2>
@@ -640,7 +649,8 @@ const User = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <style>{`

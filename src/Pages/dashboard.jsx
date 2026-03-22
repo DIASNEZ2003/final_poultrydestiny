@@ -1,5 +1,6 @@
 // src/Pages/Dashboard.jsx
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom"; 
 import { auth } from "../firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { getDatabase, ref, update, get, onValue, onDisconnect, push, set, remove } from "firebase/database";
@@ -9,6 +10,7 @@ import { MessageSquare, X, Download, FileText, Loader2, Send, Paperclip, Edit2, 
 // Import your components
 import BatchControl from "../Dashboard/BatchControl";
 import User from "../Dashboard/User";
+import RealDashboard from "../Dashboard/RealDashboard";
 
 // --- HELPER: TIME FORMAT ---
 const formatTime = (timestamp) => {
@@ -19,18 +21,19 @@ const formatTime = (timestamp) => {
   return isToday ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : `${date.toLocaleDateString([], { month: 'short', day: 'numeric'})}, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 };
 
-// --- COMPONENT: FULLSCREEN IMAGE VIEWER ---
+// --- COMPONENT: FULLSCREEN IMAGE VIEWER (Using Portal) ---
 const ImageViewerModal = ({ imageUrl, onClose }) => {
   if (!imageUrl) return null;
-  return (
-    <div className="fixed inset-0 z-[9999] bg-white/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
       <button onClick={onClose} className="absolute top-4 right-4 text-gray-600 hover:text-red-600 bg-white/80 hover:bg-white p-1.5 rounded-full z-50 shadow-sm"><X size={20} /></button>
       <img src={imageUrl} alt="Fullscreen View" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl bg-white" onClick={(e) => e.stopPropagation()} />
-    </div>
+    </div>,
+    document.body
   );
 };
 
-// --- COMPONENT: IN-SYSTEM DOCUMENT VIEWER ---
+// --- COMPONENT: IN-SYSTEM DOCUMENT VIEWER (Using Portal) ---
 const DocumentViewerModal = ({ documentInfo, onClose }) => {
   if (!documentInfo) return null;
   const { url, type, name } = documentInfo;
@@ -42,8 +45,8 @@ const DocumentViewerModal = ({ documentInfo, onClose }) => {
   else if (isPdf) viewerUrl = `${url}#view=FitH`;
   else viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
 
-  return (
-    <div className="fixed inset-0 z-[9999] bg-white/80 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-fade-in">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-fade-in">
       <div className="w-full max-w-4xl h-full flex flex-col bg-white rounded-xl shadow-2xl overflow-hidden relative">
         <div className="bg-gray-100 p-3 flex justify-between items-center border-b border-gray-200">
           <div className="flex items-center gap-3">
@@ -66,7 +69,8 @@ const DocumentViewerModal = ({ documentInfo, onClose }) => {
           <iframe src={viewerUrl} className="w-full h-full border-none absolute inset-0 z-10 bg-transparent" title="Document Viewer" />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -155,23 +159,26 @@ const FloatingMessengerModal = ({ isOpen, onClose, onBack, targetUser, onViewIma
   if (!isOpen || !targetUser) return null; 
 
   return (
-    <div className="fixed bottom-0 right-0 sm:bottom-24 sm:right-6 z-[200] animate-slide-up shadow-2xl rounded-t-2xl sm:rounded-2xl border border-gray-200 overflow-hidden w-full sm:w-[360px] h-[85vh] sm:h-[500px] flex flex-col bg-white">
+    <div className="fixed top-16 right-0 z-[200] animate-slide-up shadow-2xl border border-gray-200 overflow-hidden w-full sm:w-[360px] h-[calc(100vh-4rem)] sm:h-[500px] flex flex-col bg-white sm:rounded-b-2xl sm:border-t-0">
       
-      {msgToDelete && (
-        <div className="absolute inset-0 z-[160] bg-white/95 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="text-center w-full max-w-xs">
+      {/* Delete Confirmation Portal */}
+      {msgToDelete && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl p-5 text-center w-full max-w-xs animate-fade-in border border-gray-200">
             <h4 className="text-sm font-bold text-gray-800 mb-3">Delete message?</h4>
             <div className="flex gap-2">
               <button onClick={() => setMsgToDelete(null)} className="flex-1 py-2 bg-gray-100 font-bold rounded-lg text-xs text-gray-600 hover:bg-gray-200">Cancel</button>
               <button onClick={deleteMessage} className="flex-1 py-2 bg-red-600 text-white font-bold rounded-lg text-xs shadow-md hover:bg-red-700">Delete</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {msgToEdit && (
-        <div className="absolute inset-0 z-[160] bg-white/95 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-xs">
+      {/* Edit Message Portal */}
+      {msgToEdit && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl p-5 w-full max-w-xs animate-fade-in border border-gray-200">
             <h4 className="font-bold text-gray-800 mb-2 text-xs uppercase">Edit Message</h4>
             <textarea className="w-full border bg-gray-50 p-2 rounded-lg text-xs h-24 outline-none focus:border-red-900 focus:ring-1 focus:ring-red-900" value={editText} onChange={(e) => setEditText(e.target.value)} />
             <div className="flex gap-2 mt-3">
@@ -179,16 +186,25 @@ const FloatingMessengerModal = ({ isOpen, onClose, onBack, targetUser, onViewIma
               <button onClick={submitEdit} className="flex-1 py-2 bg-red-900 text-white font-bold rounded-lg text-[10px] uppercase shadow-md hover:bg-red-800">Save</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <div className="bg-red-900 p-3 flex items-center justify-between shadow z-10 shrink-0">
         <div className="flex items-center gap-2">
           <button onClick={onBack} className="p-1.5 hover:bg-red-800 rounded-full text-white transition mr-1"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg></button>
-          <div className={`relative w-9 h-9 rounded-full flex items-center justify-center text-white font-bold border-2 border-white/20 overflow-hidden ${targetUser.profilePicture || targetUser.profileImage ? 'bg-white' : 'bg-red-800'}`}>
-            {targetUser.profilePicture || targetUser.profileImage ? <img src={targetUser.profilePicture || targetUser.profileImage} className="w-full h-full object-cover" alt="Profile" /> : <span className="text-sm">{(targetUser.username || "U").charAt(0).toUpperCase()}</span>}
-            <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 border-2 border-red-900 rounded-full ${liveStatus === 'online' ? 'bg-green-400' : 'bg-gray-400'}`}></div>
+          
+          <div className="relative w-9 h-9 shrink-0">
+            <div className={`w-full h-full rounded-full flex items-center justify-center text-white font-bold border-2 border-white/20 overflow-hidden ${targetUser.profilePicture || targetUser.profileImage ? 'bg-white' : 'bg-red-800'}`}>
+              {targetUser.profilePicture || targetUser.profileImage ? (
+                <img src={targetUser.profilePicture || targetUser.profileImage} className="w-full h-full object-cover" alt="Profile" />
+              ) : (
+                <span className="text-sm">{(targetUser.username || "U").charAt(0).toUpperCase()}</span>
+              )}
+            </div>
+            <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 border-2 border-red-900 rounded-full ${liveStatus === 'online' ? 'bg-green-400' : 'bg-gray-400'}`}></div>
           </div>
+
           <div className="overflow-hidden">
             <h3 className="font-bold text-white text-xs leading-tight flex items-center gap-1 truncate max-w-[140px]">
               {targetUser.username || targetUser.fullName || "Unknown"} {targetUser.role === 'admin' && <ShieldCheck size={12} className="text-blue-400 shrink-0" />}
@@ -291,12 +307,15 @@ const Dashboard = () => {
   const [isRefreshingLocation, setIsRefreshingLocation] = useState(false);
   const [showWeatherModal, setShowWeatherModal] = useState(false);
 
-  // Messenger / Floating Widget States
+  // Messenger / Header Widget States
   const [usersMap, setUsersMap] = useState({});
   const [recentChats, setRecentChats] = useState([]);
   const [showFloatingChatList, setShowFloatingChatList] = useState(false);
   const [globalChatUser, setGlobalChatUser] = useState(null); 
   const [chatSearch, setChatSearch] = useState("");
+
+  // Active Batch State
+  const [activeBatch, setActiveBatch] = useState(null);
 
   const deviceLocation = useRef({ lat: 10.3323, lon: 123.3283 });
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
@@ -439,20 +458,25 @@ const Dashboard = () => {
       } else { setRecentChats([]); }
     });
 
-    return () => { clearInterval(weatherInterval); unsubscribeWeather(); unsubUsers(); unsubChats(); };
+    const unsubBatch = onValue(ref(db, 'global_batches'), (snap) => {
+      if (snap.exists()) {
+        const found = Object.values(snap.val()).find(b => b.status === 'active');
+        setActiveBatch(found || null);
+      } else {
+        setActiveBatch(null);
+      }
+    });
+
+    return () => { clearInterval(weatherInterval); unsubscribeWeather(); unsubUsers(); unsubChats(); unsubBatch(); };
   }, []);
 
   const totalUnreadMessages = recentChats.reduce((sum, chat) => sum + chat.count, 0);
 
-  // ==========================================
-  // UPDATED: BUILD THE COMPLETE CHAT DISPLAY LIST
-  // Now explicitly filtering for personnel, personel, and user.
-  // ==========================================
   const allMessageableUsers = Object.keys(usersMap)
     .map(uid => ({ uid, ...usersMap[uid] }))
     .filter(u => 
-      u.uid !== user?.uid && // Don't show the logged-in admin
-      (u.role === 'personnel' || u.role === 'personel' || u.role === 'user') // Include all requested spellings
+      u.uid !== user?.uid &&
+      (u.role === 'personnel' || u.role === 'personel' || u.role === 'user')
     );
 
   const chatDisplayList = allMessageableUsers.map(u => {
@@ -545,105 +569,16 @@ const Dashboard = () => {
       {/* GLOBAL MODALS */}
       <ImageViewerModal imageUrl={viewingImage} onClose={() => setViewingImage(null)} />
       <DocumentViewerModal documentInfo={viewingDocument} onClose={() => setViewingDocument(null)} />
-      
-      {/* FLOATING MESSENGER WIDGET (Like FB Messenger Chat Head) */}
-      <div className="fixed bottom-6 right-6 z-[150] flex flex-col items-end">
-        
-        {/* Chat List Panel (Now Shows ALL Users with a Search bar) */}
-        {showFloatingChatList && !globalChatUser && (
-          <div className="mb-4 bg-white w-80 max-h-[450px] rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-slide-up flex flex-col">
-            <div className="bg-red-900 px-4 py-3 flex justify-between items-center text-white shrink-0">
-              <h3 className="font-bold text-xs flex items-center gap-2"><MessageSquare size={14} /> Start a Chat</h3>
-              <button onClick={() => setShowFloatingChatList(false)} className="hover:bg-red-800 p-1 rounded transition-colors"><X size={14}/></button>
-            </div>
-            
-            {/* Search Bar inside widget */}
-            <div className="p-2 bg-white border-b border-gray-100 shrink-0">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={12} />
-                <input 
-                  type="text" 
-                  placeholder="Search staff..." 
-                  value={chatSearch}
-                  onChange={(e) => setChatSearch(e.target.value)}
-                  className="w-full pl-7 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:border-red-900 focus:ring-1 focus:ring-red-900 transition-all"
-                />
-              </div>
-            </div>
-            
-            <div className="overflow-y-auto flex-1 divide-y divide-gray-100 bg-gray-50 no-scrollbar">
-              {filteredChats.length === 0 ? (
-                <div className="p-8 text-center text-gray-400 text-xs font-bold uppercase tracking-widest flex flex-col items-center">
-                  <MessageSquare size={24} className="mb-2 opacity-20" />
-                  No users found
-                </div>
-              ) : (
-                filteredChats.map(u => {
-                  const isUnread = u.unreadCount > 0;
-                  const isOnline = u.status === 'online';
-                  
-                  return (
-                    <div 
-                      key={u.uid}
-                      onClick={() => setGlobalChatUser(u)}
-                      className={`p-3 cursor-pointer transition-colors flex items-start gap-3 border-l-2 ${isUnread ? 'bg-white border-red-600 hover:bg-red-50/50' : 'bg-gray-50 border-transparent hover:bg-gray-100'}`}
-                    >
-                      <div className={`relative w-10 h-10 rounded-full overflow-hidden shrink-0 border ${isUnread ? 'border-red-200' : 'border-gray-200'}`}>
-                        {u.profilePicture || u.profileImage ? (
-                          <img src={u.profilePicture || u.profileImage} className="w-full h-full object-cover"/>
-                        ) : (
-                          <div className={`w-full h-full flex items-center justify-center text-xs font-bold ${isUnread ? 'bg-red-50 text-red-700' : 'bg-white text-gray-500'}`}>
-                            {(u.username || "U").charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 border-2 border-white rounded-full ${isOnline ? 'bg-green-400' : 'bg-gray-400'}`}></div>
-                      </div>
-                      <div className="flex-1 min-w-0 pt-0.5">
-                        <div className="flex justify-between items-baseline mb-0.5">
-                          <span className={`text-xs font-bold truncate ${isUnread ? 'text-gray-900' : 'text-gray-600'}`}>{u.username || u.fullName || 'Unknown User'}</span>
-                          {u.lastChatTime > 0 && <span className="text-[9px] text-gray-400 whitespace-nowrap ml-2">{formatTime(u.lastChatTime)}</span>}
-                        </div>
-                        <div className="flex justify-between items-center gap-2">
-                          <p className={`text-[10px] truncate ${isUnread ? 'text-gray-800 font-medium' : 'text-gray-500'}`}>
-                            {u.senderRole === 'You' ? 'You: ' : ''}{u.latestText}
-                          </p>
-                          {isUnread && <span className="bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">{u.unreadCount}</span>}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        )}
 
-        {/* The Open Chat Window */}
-        <FloatingMessengerModal 
-          isOpen={!!globalChatUser} 
-          onClose={() => { setGlobalChatUser(null); setShowFloatingChatList(false); }} 
-          onBack={() => { setGlobalChatUser(null); setShowFloatingChatList(true); }}
-          targetUser={globalChatUser} 
-          onViewImage={setViewingImage} 
-          onViewDocument={setViewingDocument} 
-        />
-
-        {/* The actual Floating Button */}
-        {!globalChatUser && (
-          <button 
-            onClick={() => setShowFloatingChatList(!showFloatingChatList)}
-            className={`relative w-14 h-14 bg-red-900 text-white rounded-full flex items-center justify-center shadow-2xl hover:bg-red-800 transition-all hover:scale-105 active:scale-95 ${totalUnreadMessages > 0 ? 'animate-bounce' : ''}`}
-            style={{ animationIterationCount: totalUnreadMessages > 0 ? 3 : 0 }}
-          >
-            {showFloatingChatList ? <X size={24} /> : <MessageSquare size={24} />}
-            {totalUnreadMessages > 0 && !showFloatingChatList && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
-              </span>
-            )}
-          </button>
-        )}
-      </div>
+      {/* CHAT WINDOW - drops down from header */}
+      <FloatingMessengerModal 
+        isOpen={!!globalChatUser} 
+        onClose={() => { setGlobalChatUser(null); setShowFloatingChatList(false); }} 
+        onBack={() => { setGlobalChatUser(null); setShowFloatingChatList(true); }}
+        targetUser={globalChatUser} 
+        onViewImage={setViewingImage} 
+        onViewDocument={setViewingDocument} 
+      />
 
       {/* SIDEBAR */}
       <aside className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-red-900 text-white flex flex-col shadow-2xl z-20 transition-all duration-500 ease-in-out relative h-full`}>
@@ -686,12 +621,154 @@ const Dashboard = () => {
         
         {/* Header */}
         <header className="h-16 bg-white shadow-sm flex items-center justify-between px-8 z-10 flex-shrink-0 border-b border-gray-100 transition-all duration-300">
-          <h1 className="text-xl font-black text-gray-800 tracking-tight">{activeTab}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-black text-gray-800 tracking-tight">{activeTab}</h1>
+            {activeBatch ? (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-200 rounded-lg shadow-sm">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+                <div className="flex flex-col leading-none">
+                  <span className="text-[8px] font-black text-red-400 uppercase tracking-widest">Active Batch</span>
+                  <span className="text-[11px] font-black text-red-900 leading-tight">
+                    {activeBatch.batchName || activeBatch.name || `Batch #${activeBatch.batchNumber || '—'}`}
+                  </span>
+                </div>
+                <div className="h-6 w-px bg-red-200 mx-0.5" />
+                <div className="flex flex-col leading-none">
+                  <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Birds</span>
+                  <span className="text-[11px] font-black text-gray-700">{(activeBatch.startingPopulation || 0).toLocaleString()}</span>
+                </div>
+                <div className="h-6 w-px bg-red-200 mx-0.5" />
+                <div className="flex flex-col leading-none">
+                  <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Day</span>
+                  <span className="text-[11px] font-black text-gray-700">
+                    {activeBatch.dateCreated ? (() => {
+                      const [y, mo, d] = activeBatch.dateCreated.split('-').map(Number);
+                      const start = new Date(y, mo - 1, d, 12, 0, 0);
+                      const today = new Date(); today.setHours(12, 0, 0, 0);
+                      return Math.min(30, Math.max(1, Math.round((today - start) / 86400000) + 1));
+                    })() : '—'} / 30
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-200 rounded-lg">
+                <span className="w-2 h-2 rounded-full bg-gray-300"></span>
+                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">No Active Batch</span>
+              </div>
+            )}
+          </div>
 
-          {/* REAL-TIME NOTIFICATIONS, WEATHER & LOCATION */}
+          {/* HEADER RIGHT: Messenger + Location + Weather */}
           <div className="flex items-center gap-3 relative">
             
-            {/* UPDATED LOCATION BUTTON: Icon Only */}
+            {/* ============================================
+                MESSENGER BUTTON
+            ============================================ */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  if (globalChatUser) {
+                    setGlobalChatUser(null);
+                    setShowFloatingChatList(false);
+                  } else {
+                    setShowFloatingChatList(!showFloatingChatList);
+                  }
+                }}
+                className={`relative p-2 rounded-md border shadow-sm transition-all duration-300 ${
+                  showFloatingChatList || globalChatUser
+                    ? 'bg-red-900 border-red-900 text-white'
+                    : 'bg-white border-gray-200 text-gray-500 hover:bg-red-50 hover:border-red-200 hover:text-red-700'
+                }`}
+                title="Messages"
+              >
+                <MessageSquare size={18} />
+                {totalUnreadMessages > 0 && !showFloatingChatList && !globalChatUser && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold w-4.5 h-4.5 min-w-[18px] px-1 rounded-full flex items-center justify-center border border-white shadow-sm leading-none">
+                    {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
+                  </span>
+                )}
+              </button>
+
+              {/* Chat List Panel — drops below the messenger button */}
+              {showFloatingChatList && !globalChatUser && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowFloatingChatList(false)}></div>
+                  <div className="absolute right-0 top-full mt-3 bg-white w-80 max-h-[450px] rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-fade-in-down flex flex-col z-50 origin-top-right">
+                    <div className="bg-red-900 px-4 py-3 flex justify-between items-center text-white shrink-0">
+                      <h3 className="font-bold text-xs flex items-center gap-2"><MessageSquare size={14} /> Start a Chat</h3>
+                      <button onClick={() => setShowFloatingChatList(false)} className="hover:bg-red-800 p-1 rounded transition-colors"><X size={14}/></button>
+                    </div>
+                    
+                    {/* Search Bar */}
+                    <div className="p-2 bg-white border-b border-gray-100 shrink-0">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={12} />
+                        <input 
+                          type="text" 
+                          placeholder="Search staff..." 
+                          value={chatSearch}
+                          onChange={(e) => setChatSearch(e.target.value)}
+                          className="w-full pl-7 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:border-red-900 focus:ring-1 focus:ring-red-900 transition-all"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="overflow-y-auto flex-1 divide-y divide-gray-100 bg-gray-50 no-scrollbar">
+                      {filteredChats.length === 0 ? (
+                        <div className="p-8 text-center text-gray-400 text-xs font-bold uppercase tracking-widest flex flex-col items-center">
+                          <MessageSquare size={24} className="mb-2 opacity-20" />
+                          No users found
+                        </div>
+                      ) : (
+                        filteredChats.map(u => {
+                          const isUnread = u.unreadCount > 0;
+                          const isOnline = u.status === 'online';
+                          
+                          return (
+                            <div 
+                              key={u.uid}
+                              onClick={() => { setGlobalChatUser(u); setShowFloatingChatList(false); }}
+                              className={`p-3 cursor-pointer transition-colors flex items-start gap-3 border-l-2 ${isUnread ? 'bg-white border-red-600 hover:bg-red-50/50' : 'bg-gray-50 border-transparent hover:bg-gray-100'}`}
+                            >
+                              <div className="relative w-10 h-10 shrink-0">
+                                <div className={`w-full h-full rounded-full overflow-hidden border ${isUnread ? 'border-red-300' : 'border-gray-200'}`}>
+                                  {u.profilePicture || u.profileImage ? (
+                                    <img src={u.profilePicture || u.profileImage} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className={`w-full h-full flex items-center justify-center text-xs font-bold ${isUnread ? 'bg-red-50 text-red-700' : 'bg-white text-gray-500'}`}>
+                                      {(u.username || "U").charAt(0).toUpperCase()}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-white rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                              </div>
+
+                              <div className="flex-1 min-w-0 pt-0.5">
+                                <div className="flex justify-between items-baseline mb-0.5">
+                                  <span className={`text-xs font-bold truncate ${isUnread ? 'text-gray-900' : 'text-gray-600'}`}>{u.username || u.fullName || 'Unknown User'}</span>
+                                  {u.lastChatTime > 0 && <span className="text-[9px] text-gray-400 whitespace-nowrap ml-2">{formatTime(u.lastChatTime)}</span>}
+                                </div>
+                                <div className="flex justify-between items-center gap-2">
+                                  <p className={`text-[10px] truncate ${isUnread ? 'text-gray-800 font-medium' : 'text-gray-500'}`}>
+                                    {u.senderRole === 'You' ? 'You: ' : ''}{u.latestText}
+                                  </p>
+                                  {isUnread && <span className="bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">{u.unreadCount}</span>}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* LOCATION BUTTON */}
             <button 
               onClick={updateLocationAndWeather}
               disabled={isRefreshingLocation}
@@ -703,6 +780,7 @@ const Dashboard = () => {
               <MapPin size={18} className={isRefreshingLocation ? 'animate-bounce' : ''} />
             </button>
 
+            {/* WEATHER BUTTON */}
             {isWeatherLoading ? (
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border bg-gray-100 animate-pulse">
                 <div className="w-5 h-5 bg-gray-300 rounded-full"></div>
@@ -776,7 +854,9 @@ const Dashboard = () => {
 
         {/* Dynamic Content Rendering */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6 animate-fade-in-down h-full relative">
-          {activeTab === "Batch Control" ? <BatchControl /> : activeTab === "Manage Users" ? <User /> : (
+          {activeTab === "Dashboard" ? <RealDashboard /> : 
+           activeTab === "Batch Control" ? <BatchControl /> : 
+           activeTab === "Manage Users" ? <User /> : (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 bg-white rounded-2xl shadow-sm border border-gray-100 p-8 transition-all duration-300 hover:shadow-md">
               <svg className="w-16 h-16 mb-4 text-red-900 opacity-20 transition-transform duration-700 hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
               <h2 className="text-2xl font-black text-gray-800 mb-2">{activeTab}</h2>
@@ -786,9 +866,9 @@ const Dashboard = () => {
         </div>
       </main>
 
-      {/* LOGOUT & SUCCESS MODALS */}
-      {showLogoutModal && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
+      {/* LOGOUT MODAL (Using Portal) */}
+      {showLogoutModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-2xl p-6 w-80 shadow-2xl transform transition-all animate-slide-up text-center border border-gray-100">
             <h3 className="text-xl font-black text-gray-900 mb-1">Sign Out</h3>
             <p className="text-sm text-gray-500 mb-6 font-medium">Are you sure you want to exit?</p>
@@ -797,18 +877,21 @@ const Dashboard = () => {
               <button onClick={confirmLogout} className="flex-1 bg-red-900 text-white text-sm font-bold rounded-xl shadow-md hover:bg-red-800 transition-all active:scale-95">Log Out</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {showSuccessModal && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
+      {/* SUCCESS MODAL (Using Portal) */}
+      {showSuccessModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-2xl p-6 w-80 text-center shadow-2xl transform transition-all animate-slide-up border border-gray-100">
             <div className="w-14 h-14 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-100"><ShieldCheck size={28} /></div>
             <h3 className="text-xl font-black text-gray-900 mb-1">Success!</h3>
             <p className="text-sm text-gray-500 mb-6 font-medium">{modalMessage}</p>
             <button onClick={() => setShowSuccessModal(false)} className="w-full py-3 bg-red-900 text-white text-sm font-bold rounded-xl shadow-md hover:bg-red-800 transition-all active:scale-95">Continue</button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <style>{`
